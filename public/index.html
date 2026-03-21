@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Social Lead Scraper</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+
+<!-- ── Login ── -->
+<div class="login-page" id="loginPage">
+  <div class="login-card">
+    <div class="login-logo">&#128270; Lead Scraper</div>
+    <div class="login-subtitle">Sign in to access the dashboard</div>
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div class="form-group" style="margin-bottom:16px">
+        <label for="passwordInput">Password</label>
+        <input type="password" id="passwordInput" placeholder="Enter password" autofocus required />
+      </div>
+      <div id="loginError" class="error-box" style="display:none; margin-bottom:12px"></div>
+      <button type="submit" class="btn btn-primary" style="width:100%" id="loginBtn">
+        Sign In
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ── App ── -->
+<div class="app" id="app">
+
+  <header>
+    <div class="header-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+      </svg>
+      Lead Scraper
+    </div>
+    <div class="header-right">
+      <span class="text-muted text-sm" id="headerStatus"></span>
+      <button class="btn btn-ghost btn-sm" onclick="handleLogout()">Sign out</button>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Settings status -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Credentials Status</span>
+        <a id="sheetLink" href="#" target="_blank" class="sheet-link" style="display:none">
+          Open Google Sheet ↗
+        </a>
+      </div>
+      <div class="card-body">
+        <div class="settings-grid" id="settingsGrid">
+          <span class="text-muted text-sm">Loading…</span>
+        </div>
+        <p class="text-sm text-muted" style="margin-top:12px">
+          Configure credentials via environment variables in your hosting platform's dashboard.
+        </p>
+      </div>
+    </div>
+
+    <!-- Scrape form -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">New Scrape Job</span>
+      </div>
+      <div class="card-body">
+        <form id="scrapeForm" onsubmit="handleScrape(event)">
+          <div class="form-row" style="margin-bottom:12px">
+            <div class="form-group" style="flex:3">
+              <label for="urlInput">Post URL</label>
+              <input type="url" id="urlInput" placeholder="https://www.linkedin.com/posts/..." required />
+            </div>
+            <div class="form-group" style="flex:1.5">
+              <label for="sheetInput">Sheet Tab Name (optional)</label>
+              <input type="text" id="sheetInput" placeholder="e.g. Campaign March" />
+            </div>
+            <div class="form-group" style="flex:0.8">
+              <label for="maxLeadsInput">Max Leads</label>
+              <input type="number" id="maxLeadsInput" placeholder="0 = all" min="0" />
+            </div>
+          </div>
+          <div class="form-row" style="align-items:center">
+            <div class="checkbox-row">
+              <input type="checkbox" id="noSheetsCheck" />
+              <label for="noSheetsCheck">Skip Google Sheets (CSV only)</label>
+            </div>
+            <div style="margin-left:auto">
+              <button type="submit" class="btn btn-primary" id="scrapeBtn">
+                &#9654; Start Scrape
+              </button>
+            </div>
+          </div>
+          <div id="scrapeError" class="error-box" style="display:none; margin-top:10px"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Jobs list -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Scrape Jobs</span>
+        <button class="btn btn-ghost btn-sm" onclick="loadJobs()">&#8635; Refresh</button>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div id="jobsContainer">
+          <div class="jobs-empty">No jobs yet. Start a scrape above.</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── Drawer overlay ── -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+
+<!-- ── Job detail drawer ── -->
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <div>
+      <div class="drawer-title" id="drawerTitle">Job Details</div>
+      <div class="text-muted text-sm" id="drawerSubtitle"></div>
+    </div>
+    <div class="drawer-actions">
+      <button class="btn btn-ghost btn-sm" id="downloadCsvBtn" style="display:none" onclick="downloadCsv()">
+        &#8595; Download CSV
+      </button>
+      <button class="btn btn-ghost btn-sm" onclick="closeDrawer()">&#10005;</button>
+    </div>
+  </div>
+  <div class="drawer-body">
+    <div class="log-box" id="logBox"></div>
+    <div class="results-wrap">
+      <table class="results-table" id="resultsTable" style="display:none">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Engagement</th>
+            <th>Headline / Bio</th>
+            <th>Location</th>
+            <th>Comment</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+    </div>
+    <div id="noResults" class="jobs-empty" style="display:none">No leads found.</div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

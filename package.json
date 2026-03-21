@@ -8,22 +8,28 @@
   },
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node dist/server.js",
+    "start:cli": "node dist/index.js",
     "dev": "ts-node src/index.ts",
+    "dev:server": "ts-node src/server.ts",
     "install-browsers": "playwright install chromium"
   },
   "dependencies": {
-    "playwright": "^1.42.1",
-    "googleapis": "^137.1.0",
-    "dotenv": "^16.4.5",
-    "commander": "^12.0.0",
+    "@types/express": "^5.0.6",
+    "@types/express-session": "^1.18.2",
     "chalk": "^4.1.2",
+    "commander": "^12.0.0",
+    "csv-writer": "^1.6.0",
+    "dotenv": "^16.4.5",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "googleapis": "^137.1.0",
     "ora": "^5.4.1",
-    "csv-writer": "^1.6.0"
+    "playwright": "^1.42.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
-    "typescript": "^5.4.3",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.3"
   }
 }
