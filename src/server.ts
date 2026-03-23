@@ -163,7 +163,7 @@ app.get('/api/jobs/:id/csv', requireAuth, (req, res) => {
 });
 
 // ── Catch-all: serve index.html for SPA ───────────────────────────────────────
-app.get('*', (_req, res) => {
+app.get('/{*path}', (_req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
