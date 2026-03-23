@@ -26,7 +26,9 @@ async function expandComments(page: Page): Promise<void> {
     const loadMore = page.locator(
       'button.comments-comments-list__load-more-comments-button, ' +
       'button[aria-label*="Load more comments"], ' +
-      'button.comments-comments-list__show-previous-button'
+      'button[aria-label*="more comments"], ' +
+      'button.comments-comments-list__show-previous-button, ' +
+      'button[aria-label*="previous comments"]'
     );
     const count = await loadMore.count();
     if (count === 0) break;
@@ -55,27 +57,53 @@ async function extractComments(
     const results: Lead[] = [];
     const seen = new Set<string>();
 
-    const commentItems = document.querySelectorAll(
-      '.comments-comment-item, .comments-comment-entity'
-    );
+    // Try multiple selectors in order — LinkedIn changes class names frequently
+    const COMMENT_SELECTORS = [
+      '.comments-comment-item',
+      '.comments-comment-entity',
+      '.comments-comments-list__comment-item',
+      '.comments-comment-social-activity',
+      '.comments-comments-list article',
+      'article[data-id]',
+    ];
 
-    commentItems.forEach((item) => {
+    let commentItems: NodeListOf<Element> | Element[] = [];
+    for (const sel of COMMENT_SELECTORS) {
+      const found = document.querySelectorAll(sel);
+      if (found.length > 0) { commentItems = found; break; }
+    }
+
+    (commentItems as Iterable<Element>)[Symbol.iterator] && Array.from(commentItems as Iterable<Element>).forEach((item) => {
       if (maxLeads > 0 && results.length >= maxLeads) return;
 
-      const nameEl = item.querySelector(
-        '.comments-post-meta__name-text, ' +
-        '.comments-comment-item__commenter-name, ' +
-        'span[aria-hidden="true"]'
-      );
+      // Name — try several class combos
+      const nameEl =
+        item.querySelector('.comments-post-meta__name-text span') ??
+        item.querySelector('.comments-post-meta__actor-link span') ??
+        item.querySelector('.comments-comment-item__commenter-name-text') ??
+        item.querySelector('span.comments-comment-meta__description-title') ??
+        item.querySelector('.comments-comment-meta__name') ??
+        item.querySelector('.update-components-actor__title span[aria-hidden="true"]') ??
+        item.querySelector('span[aria-hidden="true"]');
+
+      // Profile link — attribute-based is most stable
       const linkEl = item.querySelector<HTMLAnchorElement>(
         'a.comments-post-meta__actor-link, ' +
         'a[href*="/in/"], a[href*="/company/"]'
       );
-      const headlineEl = item.querySelector('.comments-post-meta__headline');
-      const commentTextEl = item.querySelector(
-        '.comments-comment-item__main-content, ' +
-        '.feed-shared-update-v2__commentary'
-      );
+
+      // Headline / job title
+      const headlineEl =
+        item.querySelector('.comments-comment-meta__description-subtitle') ??
+        item.querySelector('.comments-post-meta__headline') ??
+        item.querySelector('.feed-shared-actor__description');
+
+      // Comment text
+      const commentTextEl =
+        item.querySelector('.comments-comment-item-content-body') ??
+        item.querySelector('.comments-comment-item__main-content') ??
+        item.querySelector('.feed-shared-update-v2__commentary') ??
+        item.querySelector('span[dir="ltr"]');
 
       const name = nameEl?.textContent?.trim() ?? '';
       const profileUrl = linkEl?.href?.split('?')[0] ?? '';
@@ -114,8 +142,10 @@ async function extractReactors(
   try {
     // Click the reaction count button to open the reactions modal
     const reactionBtn = page.locator(
+      'button[aria-label*="reaction"], ' +
+      'button[aria-label*="like"], ' +
       'button.social-details-social-counts__count-value, ' +
-      '[aria-label*="reaction"], ' +
+      '.social-details-social-counts__reactions button, ' +
       'button.social-details-social-activity'
     ).first();
 
@@ -124,17 +154,32 @@ async function extractReactors(
     await humanDelay(1500, 2500);
 
     // Scroll the modal to load all reactors
-    const modal = page.locator('.artdeco-modal__content, .social-details-reactors-modal');
+    const modal = page.locator(
+      '.artdeco-modal__content, ' +
+      '.social-details-reactors-modal, ' +
+      '[aria-label*="reactions"] .artdeco-modal__content, ' +
+      '.scaffold-finite-scroll__content'
+    ).first();
     for (let i = 0; i < 30; i++) {
       if (maxLeads > 0 && leads.length >= maxLeads) break;
       await modal.evaluate((el) => el.scrollBy(0, el.clientHeight));
       await humanDelay(600, 1200);
 
-      const items = await modal.locator('li.social-details-reactors-tab-body-list-item').all();
+      const items = await modal.locator(
+        'li.social-details-reactors-tab-body-list-item, ' +
+        '.artdeco-list__item, ' +
+        'li[class*="reactor"]'
+      ).all();
       for (const item of items) {
-        const nameEl = await item.locator('.artdeco-entity-lockup__title').first();
+        const nameEl = await item.locator(
+          '.artdeco-entity-lockup__title, ' +
+          '.artdeco-entity-lockup__title span[aria-hidden="true"]'
+        ).first();
         const linkEl = await item.locator('a[href*="/in/"], a[href*="/company/"]').first();
-        const headlineEl = await item.locator('.artdeco-entity-lockup__subtitle').first();
+        const headlineEl = await item.locator(
+          '.artdeco-entity-lockup__subtitle, ' +
+          '.artdeco-entity-lockup__caption'
+        ).first();
 
         const name = (await nameEl.textContent())?.trim() ?? '';
         const profileUrl = ((await linkEl.getAttribute('href')) ?? '').split('?')[0];
@@ -203,15 +248,27 @@ export async function scrapeLinkedIn(
     // ── Post author ─────────────────────────────────────────────────────────
     try {
       const authorName = await page
-        .locator('.update-components-actor__name span[aria-hidden="true"]')
+        .locator(
+          '.update-components-actor__name span[aria-hidden="true"], ' +
+          '.update-components-actor__title span[aria-hidden="true"], ' +
+          '.update-components-actor__container .update-components-actor__name'
+        )
         .first()
         .textContent();
       const authorHref = await page
-        .locator('a.update-components-actor__meta-link, a.app-aware-link')
+        .locator(
+          'a.update-components-actor__meta-link, ' +
+          'a.update-components-actor__container-link, ' +
+          '.update-components-actor__container a[href*="/in/"], ' +
+          '.update-components-actor__container a[href*="/company/"]'
+        )
         .first()
         .getAttribute('href');
       const authorHeadline = await page
-        .locator('.update-components-actor__description')
+        .locator(
+          '.update-components-actor__description, ' +
+          '.update-components-actor__sub-description'
+        )
         .first()
         .textContent();
 
